@@ -1,4 +1,5 @@
 import { MapPin, Bed, Bath, User, CheckCircle, XCircle, Star, Phone, Mail, MessageCircle, Wifi, Car, Utensils, Tv, Wind, Dumbbell, Shield, Coffee, Gamepad2 } from 'lucide-react';
+import MapDisplay from '../common/MapDisplay';
 
 const ApartmentDetails = ({ apartment }) => {
   const {
@@ -135,6 +136,11 @@ const ApartmentDetails = ({ apartment }) => {
           </div>
         </div>
       )}
+
+
+      {/* // openstreetmap component, after amenities: */}
+      <MapDisplay address={location} title={title} />
+
 
       <div className="card-elevated bg-gradient-to-br from-teal-50 to-navy-50 p-8">
         <div className="max-w-2xl">
