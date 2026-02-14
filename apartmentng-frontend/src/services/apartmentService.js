@@ -1,12 +1,18 @@
 import api from './api';
 
 // Get all apartments (public)
+// Get all apartments (public)
 export const getAllApartments = async (filters = {}) => {
   const params = new URLSearchParams();
   
   if (filters.featured !== undefined) params.append('featured', filters.featured);
   if (filters.available !== undefined) params.append('available', filters.available);
   if (filters.location) params.append('location', filters.location);
+  if (filters.min_price) params.append('min_price', filters.min_price);
+  if (filters.max_price) params.append('max_price', filters.max_price);
+  if (filters.bedrooms) params.append('bedrooms', filters.bedrooms);
+  if (filters.bathrooms) params.append('bathrooms', filters.bathrooms);
+  if (filters.sort_by) params.append('sort_by', filters.sort_by);
   
   const response = await api.get(`/apartments?${params.toString()}`);
   return response.data;

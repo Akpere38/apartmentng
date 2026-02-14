@@ -2,17 +2,36 @@ import { query, run, get } from '../config/database.js';
 import { uploadImage, uploadVideo as uploadVideoToCloudinary, deleteFile } from '../utils/cloudinaryHelper.js';
 
 // Get all apartments (public - with filters)
+// Get all apartments (public - with filters)
 export const getAllApartments = async (req, res) => {
   try {
-    const { featured, available, location } = req.query;
+    const { 
+      featured, 
+      available, 
+      location, 
+      min_price, 
+      max_price, 
+      bedrooms, 
+      bathrooms,
+      sort_by 
+    } = req.query;
+    
+    // Check if request is from an authenticated admin
+    const isAdmin = req.user && req.user.role === 'admin';
 
     let sql = `
       SELECT a.*, 
         (SELECT image_url FROM apartment_images WHERE apartment_id = a.id AND is_primary = 1 LIMIT 1) as primary_image,
         (SELECT COUNT(*) FROM apartment_images WHERE apartment_id = a.id) as image_count
       FROM apartments a
-      WHERE a.is_approved = 1
     `;
+
+    // Only show approved apartments for public/non-admin users
+    if (!isAdmin) {
+      sql += ' WHERE a.is_approved = 1';
+    } else {
+      sql += ' WHERE 1=1'; // Show all apartments for admin
+    }
 
     const params = [];
 
@@ -31,7 +50,55 @@ export const getAllApartments = async (req, res) => {
       params.push(`%${location}%`);
     }
 
-    sql += ' ORDER BY a.is_featured DESC, a.created_at DESC';
+    // Price range filter
+    if (min_price) {
+      sql += ' AND a.price_per_night >= ?';
+      params.push(parseFloat(min_price));
+    }
+
+    if (max_price) {
+      sql += ' AND a.price_per_night <= ?';
+      params.push(parseFloat(max_price));
+    }
+
+    // Bedrooms filter
+    if (bedrooms) {
+      sql += ' AND a.bedrooms >= ?';
+      params.push(parseInt(bedrooms));
+    }
+
+    // Bathrooms filter
+    if (bathrooms) {
+      sql += ' AND a.bathrooms >= ?';
+      params.push(parseInt(bathrooms));
+    }
+
+    // Sorting
+    let orderClause = '';
+    if (isAdmin) {
+      orderClause = ' ORDER BY a.is_approved ASC, ';
+    } else {
+      orderClause = ' ORDER BY ';
+    }
+
+    switch (sort_by) {
+      case 'price_low':
+        orderClause += 'a.price_per_night ASC, a.created_at DESC';
+        break;
+      case 'price_high':
+        orderClause += 'a.price_per_night DESC, a.created_at DESC';
+        break;
+      case 'newest':
+        orderClause += 'a.created_at DESC';
+        break;
+      case 'bedrooms':
+        orderClause += 'a.bedrooms DESC, a.created_at DESC';
+        break;
+      default:
+        orderClause += 'a.is_featured DESC, a.created_at DESC';
+    }
+
+    sql += orderClause;
 
     const apartments = await query(sql, params);
     res.json(apartments);
