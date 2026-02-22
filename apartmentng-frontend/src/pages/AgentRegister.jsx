@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { agentRegister } from '../services/authService';
 import Button from '../components/common/Button';
-import { User, Mail, Lock, Phone, Building, ArrowLeft, CheckCircle } from 'lucide-react';
+import { Mail, AlertCircle, CheckCircle, Lock, Building, User, Phone } from 'lucide-react';
 
 const AgentRegister = () => {
   const navigate = useNavigate();
@@ -59,34 +59,77 @@ const AgentRegister = () => {
     }
   };
 
-  if (success) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-teal-50 to-slate-50 flex items-center justify-center p-4">
-        <div className="relative w-full max-w-md">
-          <div className="card-elevated p-8 md:p-10 text-center">
-            <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-teal-500 to-teal-600 rounded-full mb-6">
-              <CheckCircle className="w-10 h-10 text-white" />
+ if (success) {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-teal-50 to-slate-50 flex items-center justify-center p-4">
+      <div className="relative w-full max-w-md">
+        <div className="card-elevated p-8 md:p-10 text-center">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-teal-500 to-teal-600 rounded-full mb-6">
+            <CheckCircle className="w-10 h-10 text-white" />
+          </div>
+          <h1 className="text-3xl font-display font-bold text-slate-900 mb-4">
+            Registration Successful! 🎉
+          </h1>
+          
+          <div className="text-left mb-8 space-y-4">
+            <div className="p-4 bg-teal-50 border-2 border-teal-200 rounded-xl">
+              <div className="flex items-start gap-3">
+                <Mail className="w-5 h-5 text-teal-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-teal-900 mb-2">Check Your Email</p>
+                  <p className="text-sm text-teal-800 mb-2">
+                    We've sent a verification email to:
+                  </p>
+                  <p className="text-sm font-mono bg-white px-3 py-2 rounded border border-teal-200 text-teal-900">
+                    {formData.email}
+                  </p>
+                  <p className="text-xs text-teal-700 mt-2">
+                    Click the verification link to unlock all features.
+                  </p>
+                </div>
+              </div>
             </div>
-            <h1 className="text-3xl font-display font-bold text-slate-900 mb-4">
-              Registration Successful!
-            </h1>
-            <p className="text-slate-600 mb-8">
-              Thank you for registering! Your account is pending approval from our admin team. 
-              You'll receive an email notification once your account is approved.
-            </p>
-            <div className="space-y-3">
-              <Link to="/" className="btn-primary w-full">
-                Back to Home
-              </Link>
-              <Link to="/agent/login" className="btn-secondary w-full">
-                Go to Login
-              </Link>
+
+            <div className="p-4 bg-amber-50 border-2 border-amber-200 rounded-xl">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-amber-900 mb-1">Pending Admin Approval</p>
+                  <p className="text-sm text-amber-800">
+                    Your account also requires approval from our admin team. You'll receive an email once approved.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
+              <p className="text-sm text-slate-700">
+                💡 <strong>You can login now</strong>, but some features will be limited until:
+              </p>
+              <ul className="text-sm text-slate-600 mt-2 ml-6 space-y-1 list-disc">
+                <li>Your email is verified</li>
+                <li>Your account is approved by admin</li>
+              </ul>
             </div>
           </div>
+
+          <div className="space-y-3">
+            <Link to="/agent/login" className="btn-primary w-full">
+              Proceed to Login
+            </Link>
+            <Link to="/" className="btn-secondary w-full">
+              Back to Home
+            </Link>
+          </div>
+
+          <p className="text-xs text-slate-500 mt-6">
+            Didn't receive the email? Check your spam folder or resend after logging in.
+          </p>
         </div>
       </div>
-    );
-  }
+    </div>
+  );
+}
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-teal-50 to-slate-50 flex items-center justify-center p-4">

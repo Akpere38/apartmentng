@@ -12,6 +12,8 @@ import AgentDashboard from './pages/AgentDashboard';
 import AgentProfileView from './components/admin/AgentProfileView';
 import StickyBrowseButton from './components/common/StickyBrowseButton';
 import AgentProfile from './pages/AgentProfile';
+import VerifyEmailPage from './pages/VerifyEmailPage';
+import VerifyNewEmailPage from './pages/VerifyNewEmailPage';
 
 function App() {
   return (
@@ -65,6 +67,10 @@ function App() {
               </ProtectedRoute>
             } 
           />
+        
+        {/* Email verification routes - these don't need protection */}
+        <Route path="/agent/verify-email/:token" element={<VerifyEmailPage />} />
+        <Route path="/agent/verify-new-email/:token" element={<VerifyNewEmailPage />} />
       </Routes>
 
       {/* Sticky Browse Button - shows on all pages */}

@@ -3,7 +3,11 @@ import jwt from 'jsonwebtoken';
 import { get, query, run } from '../config/database.js';
 import { uploadToCloudinary, deleteFromCloudinary } from '../utils/cloudinaryHelper.js';
 
+import { generateVerificationToken, sendVerificationEmail, sendEmailChangeVerification } from '../services/emailService.js';
+
+
 // Agent registration
+// Update agentRegister to send verification email
 export const agentRegister = async (req, res) => {
   try {
     const { name, email, password, phone, company_name } = req.body;
@@ -19,13 +23,28 @@ export const agentRegister = async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
+    
+    // Generate verification token
+    const verificationToken = generateVerificationToken();
+    const tokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
     await run(
-      'INSERT INTO agents (name, email, password, phone, company_name) VALUES (?, ?, ?, ?, ?)',
-      [name, email, hashedPassword, phone, company_name]
+      'INSERT INTO agents (name, email, password, phone, company_name, verification_token, verification_token_expires) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [name, email, hashedPassword, phone, company_name, verificationToken, tokenExpires.toISOString()]
     );
 
-    res.status(201).json({ message: 'Registration successful. Waiting for admin approval.' });
+    // Send verification email
+    try {
+      await sendVerificationEmail(email, name, verificationToken);
+    } catch (emailError) {
+      console.error('Failed to send verification email:', emailError);
+      // Don't fail registration if email fails
+    }
+
+    res.status(201).json({ 
+      message: 'Registration successful. Please check your email to verify your account.',
+      emailSent: true
+    });
   } catch (error) {
     console.error('Agent registration error:', error);
     res.status(500).json({ error: 'Server error' });
@@ -330,6 +349,131 @@ export const deleteCurrentAgentDocument = async (req, res) => {
     res.json({ message: 'Document deleted successfully' });
   } catch (error) {
     console.error('Delete document error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+// Verify email
+export const verifyEmail = async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    const agent = await get(
+      'SELECT * FROM agents WHERE verification_token = ? AND verification_token_expires > datetime("now")',
+      [token]
+    );
+
+    if (!agent) {
+      return res.status(400).json({ error: 'Invalid or expired verification token' });
+    }
+
+    await run(
+      'UPDATE agents SET email_verified = 1, verification_token = NULL, verification_token_expires = NULL WHERE id = ?',
+      [agent.id]
+    );
+
+    res.json({ message: 'Email verified successfully' });
+  } catch (error) {
+    console.error('Email verification error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+// Resend verification email
+export const resendVerificationEmail = async (req, res) => {
+  try {
+    const agentId = req.user.id;
+
+    const agent = await get('SELECT * FROM agents WHERE id = ?', [agentId]);
+
+    if (!agent) {
+      return res.status(404).json({ error: 'Agent not found' });
+    }
+
+    if (agent.email_verified === 1) {
+      return res.status(400).json({ error: 'Email already verified' });
+    }
+
+    // Generate new token
+    const verificationToken = generateVerificationToken();
+    const tokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    await run(
+      'UPDATE agents SET verification_token = ?, verification_token_expires = ? WHERE id = ?',
+      [verificationToken, tokenExpires.toISOString(), agentId]
+    );
+
+    // Send email
+    await sendVerificationEmail(agent.email, agent.name, verificationToken);
+
+    res.json({ message: 'Verification email sent' });
+  } catch (error) {
+    console.error('Resend verification error:', error);
+    res.status(500).json({ error: 'Failed to send verification email' });
+  }
+};
+
+// Request email change
+export const requestEmailChange = async (req, res) => {
+  try {
+    const agentId = req.user.id;
+    const { new_email } = req.body;
+
+    if (!new_email) {
+      return res.status(400).json({ error: 'New email is required' });
+    }
+
+    // Check if email is already in use
+    const existingAgent = await get('SELECT * FROM agents WHERE email = ?', [new_email]);
+
+    if (existingAgent) {
+      return res.status(400).json({ error: 'Email already in use' });
+    }
+
+    const agent = await get('SELECT * FROM agents WHERE id = ?', [agentId]);
+
+    // Generate token for new email
+    const token = generateVerificationToken();
+    const tokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    await run(
+      'UPDATE agents SET pending_email = ?, pending_email_token = ?, pending_email_expires = ? WHERE id = ?',
+      [new_email, token, tokenExpires.toISOString(), agentId]
+    );
+
+    // Send verification to new email
+    await sendEmailChangeVerification(new_email, agent.name, token);
+
+    res.json({ message: 'Verification email sent to new address' });
+  } catch (error) {
+    console.error('Email change request error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
+
+// Verify new email
+export const verifyNewEmail = async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    const agent = await get(
+      'SELECT * FROM agents WHERE pending_email_token = ? AND pending_email_expires > datetime("now")',
+      [token]
+    );
+
+    if (!agent) {
+      return res.status(400).json({ error: 'Invalid or expired verification token' });
+    }
+
+    // Update email and mark as verified
+    await run(
+      'UPDATE agents SET email = ?, email_verified = 1, pending_email = NULL, pending_email_token = NULL, pending_email_expires = NULL WHERE id = ?',
+      [agent.pending_email, agent.id]
+    );
+
+    res.json({ message: 'Email updated successfully', newEmail: agent.pending_email });
+  } catch (error) {
+    console.error('Verify new email error:', error);
     res.status(500).json({ error: 'Server error' });
   }
 };

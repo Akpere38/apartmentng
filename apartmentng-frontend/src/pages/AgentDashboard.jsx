@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/common/Navbar';
 import Footer from '../components/common/Footer';
@@ -6,15 +7,32 @@ import LoadingSpinner from '../components/common/LoadingSpinner';
 import ApartmentForm from '../components/admin/ApartmentForm';
 // import { getAgentApartments, getApartmentById, deleteApartment } from '../services/apartmentService';
 import { getAgentApartments, getApartmentById, deleteApartment, toggleAvailability } from '../services/apartmentService';
-import { Home, Plus, Edit2, Trash2, Eye, X } from 'lucide-react';
+import { Home, Plus, Edit2, Trash2, Eye, X, User } from 'lucide-react';
+import EmailVerificationBanner from '../components/agent/EmailVerificationBanner';
+import { getMyProfile } from '../services/agentService';
 
 const AgentDashboard = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const [profileData, setProfileData] = useState(null);
   const [apartments, setApartments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingApartment, setEditingApartment] = useState(null);
   const [editData, setEditData] = useState(null);
+
+  const fetchProfile = async () => {
+    try {
+      const data = await getMyProfile();
+      setProfileData(data);
+    } catch (error) {
+      console.error('Failed to load profile');
+    }
+  };
+
+  useEffect(() => {
+    fetchProfile();
+  }, []);
 
   const fetchApartments = async () => {
     try {
@@ -112,9 +130,12 @@ const AgentDashboard = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
+          <EmailVerificationBanner agent={profileData} />
       <Navbar />
       <main className="flex-1">
         <div className="bg-gradient-to-br from-teal-600 via-teal-700 to-navy-700 text-white">
+
+          
           <div className="container-custom py-12">
             <h1 className="text-4xl font-display font-bold mb-2">Agent Dashboard</h1>
             <p className="text-teal-100">Welcome back, {user?.name || 'Agent'}</p>
@@ -163,9 +184,14 @@ const AgentDashboard = () => {
         <div className="container-custom pb-16">
           <div className="flex items-center justify-between mb-8">
             <h2 className="text-3xl font-display font-bold text-slate-900">My Apartments</h2>
-            <button onClick={() => setShowAddForm(true)} className="btn-primary">
-              <Plus className="w-5 h-5 mr-2" />Add New Apartment
-            </button>
+            <div className="flex gap-3">
+              <button onClick={() => navigate('/agent/profile')} className="btn-secondary">
+                <User className="w-5 h-5 mr-2" />My Profile
+              </button>
+              <button onClick={() => setShowAddForm(true)} className="btn-primary">
+                <Plus className="w-5 h-5 mr-2" />Add New Apartment
+              </button>
+            </div>
           </div>
           {loading ? (
             <LoadingSpinner />

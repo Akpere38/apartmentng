@@ -40,17 +40,26 @@ export const getAgentProfileAgent = async () => {
   return response.data;
 };
 
+// Alias for getAgentProfileAgent
+export const getMyProfile = getAgentProfileAgent;
+
 // Update own profile agent
 export const updateAgentProfile = async (data) => {
   const response = await api.put('/agents/me', data);
   return response.data;
 };
 
+// Alias for updateAgentProfile
+export const updateMyProfile = updateAgentProfile;
+
 // Change password
 export const changeAgentPassword = async (data) => {
   const response = await api.put('/agents/me/password', data);
   return response.data;
 };
+
+// Alias for changeAgentPassword
+export const changeMyPassword = changeAgentPassword;
 
 // Upload document agent
 export const uploadAgentDocument = async (documentType, file) => {
@@ -66,8 +75,25 @@ export const uploadAgentDocument = async (documentType, file) => {
   return response.data;
 };
 
+// Alias for uploadAgentDocument
+export const uploadMyDocument = uploadAgentDocument;
+
 // Delete documentagent
 export const deleteAgentDocument = async (documentId) => {
   const response = await api.delete(`/agents/me/documents/${documentId}`);
+  return response.data;
+};
+
+// Alias for deleteAgentDocument
+export const deleteMyDocument = deleteAgentDocument;
+
+// Resend verification email
+export const resendVerificationEmail = async () => {
+  const response = await api.post('/agents/resend-verification');
+  return response.data;
+};
+
+export const requestEmailChange = async (newEmail) => {
+  const response = await api.put('/agents/me/request-email-change', { new_email: newEmail });
   return response.data;
 };

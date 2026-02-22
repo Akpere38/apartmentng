@@ -10,7 +10,11 @@ import {
   updateCurrentAgentProfile,
   changeCurrentAgentPassword,
   uploadCurrentAgentDocument,
-  deleteCurrentAgentDocument
+  deleteCurrentAgentDocument,
+  verifyEmail,
+  resendVerificationEmail,
+  requestEmailChange,
+  verifyNewEmail
 } from '../controllers/agentController.js';
 import { verifyToken, isAdmin, isAgent } from '../middleware/auth.js';
 import upload from '../middleware/upload.js';
@@ -42,4 +46,10 @@ router.put('/:id/approve', verifyToken, isAdmin, approveAgent);
 // Delete agent (admin only)
 router.delete('/:id', verifyToken, isAdmin, deleteAgent);
 
+
+// Email verification routes
+router.get('/verify/:token', verifyEmail);
+router.post('/resend-verification', verifyToken, isAgent, resendVerificationEmail);
+router.put('/me/request-email-change', verifyToken, isAgent, requestEmailChange);
+router.get('/verify-new-email/:token', verifyNewEmail);
 export default router;

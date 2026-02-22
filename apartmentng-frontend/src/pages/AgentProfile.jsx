@@ -3,8 +3,8 @@ import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/common/Navbar';
 import Footer from '../components/common/Footer';
 import LoadingSpinner from '../components/common/LoadingSpinner';
-import { getAgentProfile, updateAgentProfile, changeAgentPassword, uploadAgentDocument, deleteAgentDocument } from '../services/agentService';
-import { User, Phone, Building, Mail, Lock, Upload, FileText, CheckCircle, Clock, XCircle, Trash2, Eye } from 'lucide-react';
+import { getMyProfile, updateMyProfile, changeMyPassword, uploadMyDocument, deleteMyDocument, requestEmailChange } from '../services/agentService';
+import { User, Phone, Building, Mail, Lock, Upload, FileText, CheckCircle, Clock, XCircle, Trash2, Eye, AlertCircle } from 'lucide-react';
 
 const AgentProfile = () => {
   const { user } = useAuth();
@@ -20,6 +20,13 @@ const AgentProfile = () => {
     phone: '',
     company_name: ''
   });
+
+  // Email Change Form
+  const [emailChangeForm, setEmailChangeForm] = useState({
+    new_email: '',
+    confirm_email: ''
+  });
+  const [showEmailChange, setShowEmailChange] = useState(false);
 
   // Password Form
   const [passwordForm, setPasswordForm] = useState({
@@ -37,7 +44,7 @@ const AgentProfile = () => {
 
   const fetchProfile = async () => {
     try {
-      const data = await getAgentProfile();
+      const data = await getMyProfile();
       setProfileData(data);
       setPersonalInfo({
         name: data.name || '',
@@ -59,6 +66,14 @@ const AgentProfile = () => {
     setErrors({});
   };
 
+  const handleEmailChange = (e) => {
+    setEmailChangeForm({
+      ...emailChangeForm,
+      [e.target.name]: e.target.value
+    });
+    setErrors({});
+  };
+
   const handlePasswordChange = (e) => {
     setPasswordForm({
       ...passwordForm,
@@ -74,11 +89,35 @@ const AgentProfile = () => {
     setSuccessMessage('');
 
     try {
-      await updateAgentProfile(personalInfo);
+      await updateMyProfile(personalInfo);
       setSuccessMessage('Profile updated successfully!');
       fetchProfile();
     } catch (error) {
       setErrors({ profile: error.response?.data?.error || 'Failed to update profile' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRequestEmailChange = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    setErrors({});
+    setSuccessMessage('');
+
+    if (emailChangeForm.new_email !== emailChangeForm.confirm_email) {
+      setErrors({ email: 'Email addresses do not match' });
+      setSaving(false);
+      return;
+    }
+
+    try {
+      await requestEmailChange(emailChangeForm.new_email);
+      setSuccessMessage('Verification email sent to your new address! Please check your inbox.');
+      setEmailChangeForm({ new_email: '', confirm_email: '' });
+      setShowEmailChange(false);
+    } catch (error) {
+      setErrors({ email: error.response?.data?.error || 'Failed to change email' });
     } finally {
       setSaving(false);
     }
@@ -97,7 +136,7 @@ const AgentProfile = () => {
     }
 
     try {
-      await changeAgentPassword({
+      await changeMyPassword({
         current_password: passwordForm.current_password,
         new_password: passwordForm.new_password
       });
@@ -121,7 +160,7 @@ const AgentProfile = () => {
     setErrors({});
 
     try {
-      await uploadAgentDocument(documentType, file);
+      await uploadMyDocument(documentType, file);
       fetchProfile();
       setSuccessMessage('Document uploaded successfully! Waiting for admin approval.');
     } catch (error) {
@@ -135,7 +174,7 @@ const AgentProfile = () => {
     if (!window.confirm('Delete this document?')) return;
 
     try {
-      await deleteAgentDocument(documentId);
+      await deleteMyDocument(documentId);
       fetchProfile();
       setSuccessMessage('Document deleted successfully');
     } catch (error) {
@@ -301,16 +340,37 @@ const AgentProfile = () => {
                     <label className="block text-sm font-semibold text-slate-700 mb-2">
                       Email Address
                     </label>
-                    <div className="relative">
-                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                      <input
-                        type="email"
-                        value={profileData?.email}
-                        className="input-field pl-12 bg-slate-100"
-                        disabled
-                      />
+                    <div className="flex gap-3">
+                      <div className="relative flex-1">
+                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                        <input
+                          type="email"
+                          value={profileData?.email}
+                          className="input-field pl-12 bg-slate-100"
+                          disabled
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowEmailChange(!showEmailChange)}
+                        className="btn-secondary whitespace-nowrap"
+                      >
+                        Change Email
+                      </button>
                     </div>
-                    <p className="text-xs text-slate-500 mt-1">Email cannot be changed</p>
+                    <div className="flex items-center gap-2 mt-2">
+                      {profileData?.email_verified === 1 ? (
+                        <span className="text-xs text-green-600 flex items-center gap-1">
+                          <CheckCircle className="w-3 h-3" />
+                          Verified
+                        </span>
+                      ) : (
+                        <span className="text-xs text-amber-600 flex items-center gap-1">
+                          <AlertCircle className="w-3 h-3" />
+                          Not verified
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -318,6 +378,72 @@ const AgentProfile = () => {
                   {saving ? 'Updating...' : 'Update Profile'}
                 </button>
               </form>
+
+              {/* Email Change Form */}
+              {showEmailChange && (
+                <div className="mt-6 p-6 bg-teal-50 border-2 border-teal-200 rounded-xl">
+                  <h4 className="font-semibold text-slate-900 mb-4">Change Email Address</h4>
+                  
+                  {errors.email && (
+                    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                      <p className="text-sm text-red-700">{errors.email}</p>
+                    </div>
+                  )}
+
+                  <form onSubmit={handleRequestEmailChange} className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">
+                        New Email Address
+                      </label>
+                      <input
+                        type="email"
+                        name="new_email"
+                        value={emailChangeForm.new_email}
+                        onChange={handleEmailChange}
+                        className="input-field"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">
+                        Confirm New Email
+                      </label>
+                      <input
+                        type="email"
+                        name="confirm_email"
+                        value={emailChangeForm.confirm_email}
+                        onChange={handleEmailChange}
+                        className="input-field"
+                        required
+                      />
+                    </div>
+
+                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                      <p className="text-xs text-amber-800">
+                        ⚠️ A verification email will be sent to your new address. Your email will only be updated after verification.
+                      </p>
+                    </div>
+
+                    <div className="flex gap-3">
+                      <button type="submit" className="btn-primary flex-1" disabled={saving}>
+                        {saving ? 'Sending...' : 'Send Verification Email'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowEmailChange(false);
+                          setEmailChangeForm({ new_email: '', confirm_email: '' });
+                          setErrors({});
+                        }}
+                        className="btn-secondary"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
             </div>
           )}
 
@@ -372,8 +498,8 @@ const AgentProfile = () => {
 
                       {existingDoc && (
                         <div className="flex gap-2">
-                          
-                          <a  href={existingDoc.file_url}
+                          <a
+                            href={existingDoc.file_url}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="btn-ghost text-sm"
