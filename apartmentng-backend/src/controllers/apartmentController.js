@@ -3,6 +3,7 @@ import { uploadImage, uploadVideo as uploadVideoToCloudinary, deleteFile } from 
 
 // Get all apartments (public - with filters)
 // Get all apartments (public - with filters)
+// Get all apartments (public - with filters)
 export const getAllApartments = async (req, res) => {
   try {
     const { 
@@ -16,21 +17,24 @@ export const getAllApartments = async (req, res) => {
       sort_by 
     } = req.query;
     
-    // Check if request is from an authenticated admin
     const isAdmin = req.user && req.user.role === 'admin';
 
     let sql = `
       SELECT a.*, 
         (SELECT image_url FROM apartment_images WHERE apartment_id = a.id AND is_primary = 1 LIMIT 1) as primary_image,
-        (SELECT COUNT(*) FROM apartment_images WHERE apartment_id = a.id) as image_count
+        (SELECT COUNT(*) FROM apartment_images WHERE apartment_id = a.id) as image_count,
+        ag.name as agent_name,
+        ag.email as agent_email,
+        ag.phone as agent_phone,
+        ag.company_name as agent_company
       FROM apartments a
+      LEFT JOIN agents ag ON a.agent_id = ag.id
     `;
 
-    // Only show approved apartments for public/non-admin users
     if (!isAdmin) {
       sql += ' WHERE a.is_approved = 1';
     } else {
-      sql += ' WHERE 1=1'; // Show all apartments for admin
+      sql += ' WHERE 1=1';
     }
 
     const params = [];
@@ -50,7 +54,6 @@ export const getAllApartments = async (req, res) => {
       params.push(`%${location}%`);
     }
 
-    // Price range filter
     if (min_price) {
       sql += ' AND a.price_per_night >= ?';
       params.push(parseFloat(min_price));
@@ -61,19 +64,16 @@ export const getAllApartments = async (req, res) => {
       params.push(parseFloat(max_price));
     }
 
-    // Bedrooms filter
     if (bedrooms) {
       sql += ' AND a.bedrooms >= ?';
       params.push(parseInt(bedrooms));
     }
 
-    // Bathrooms filter
     if (bathrooms) {
       sql += ' AND a.bathrooms >= ?';
       params.push(parseInt(bathrooms));
     }
 
-    // Sorting
     let orderClause = '';
     if (isAdmin) {
       orderClause = ' ORDER BY a.is_approved ASC, ';
@@ -109,24 +109,36 @@ export const getAllApartments = async (req, res) => {
 };
 
 // Get apartment by ID (public)
+// Get apartment by ID
 export const getApartmentById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const apartment = await get('SELECT * FROM apartments WHERE id = ?', [id]);
+    const apartment = await get(
+      `SELECT a.*,
+        ag.name as agent_name,
+        ag.email as agent_email,
+        ag.phone as agent_phone,
+        ag.company_name as agent_company
+       FROM apartments a
+       LEFT JOIN agents ag ON a.agent_id = ag.id
+       WHERE a.id = ?`,
+      [id]
+    );
 
     if (!apartment) {
       return res.status(404).json({ error: 'Apartment not found' });
     }
 
-    // Get images
     const images = await query(
       'SELECT * FROM apartment_images WHERE apartment_id = ? ORDER BY is_primary DESC, display_order ASC',
       [id]
     );
 
-    // Get videos
-    const videos = await query('SELECT * FROM apartment_videos WHERE apartment_id = ?', [id]);
+    const videos = await query(
+      'SELECT * FROM apartment_videos WHERE apartment_id = ?',
+      [id]
+    );
 
     res.json({
       ...apartment,

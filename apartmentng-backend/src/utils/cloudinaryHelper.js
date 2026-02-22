@@ -68,3 +68,26 @@ export const deleteFile = async (cloudinaryId, resourceType = 'image') => {
     return false;
   }
 };
+
+
+// Upload any file to Cloudinary
+export const uploadToCloudinary = async (filePath, folder = 'apartments') => {
+  try {
+    const result = await cloudinary.uploader.upload(filePath, {
+      folder: `apartmentng/${folder}`,
+      resource_type: 'auto'
+    });
+    return result;
+  } catch (error) {
+    throw new Error('Cloudinary upload failed');
+  }
+};
+
+// Delete from Cloudinary
+export const deleteFromCloudinary = async (publicId) => {
+  try {
+    await cloudinary.uploader.destroy(publicId);
+  } catch (error) {
+    console.error('Cloudinary delete error:', error);
+  }
+};

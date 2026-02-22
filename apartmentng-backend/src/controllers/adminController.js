@@ -3,48 +3,50 @@ import jwt from 'jsonwebtoken';
 import { get, run } from '../config/database.js';
 
 // Admin login
-export const login = async (req, res) => {
+export const adminLogin = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Validate input
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
-    // Find admin by email
     const admin = await get('SELECT * FROM admins WHERE email = ?', [email]);
 
     if (!admin) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Check password
     const isPasswordValid = await bcrypt.compare(password, admin.password);
 
     if (!isPasswordValid) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Create JWT token
     const token = jwt.sign(
-      { id: admin.id, email: admin.email, role: 'admin' },
+      { id: admin.id, role: 'admin' },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
 
-    // Return token and admin info (without password)
+    // Create user object
+    const userResponse = {
+      id: admin.id,
+      name: admin.name,
+      email: admin.email,
+      role: 'admin'
+    };
+
+    // Log what we're sending
+    console.log('Backend sending:', JSON.stringify({ user: userResponse }, null, 2));
+
     res.json({
       token,
-      admin: {
-        id: admin.id,
-        email: admin.email,
-        name: admin.name
-      }
+      user: userResponse
     });
   } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ error: 'Server error during login' });
+    console.error('Admin login error:', error);
+    res.status(500).json({ error: 'Server error' });
   }
 };
 

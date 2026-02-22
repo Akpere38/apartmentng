@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getAllAgents, approveAgent, deleteAgent } from '../../services/agentService';
-import { CheckCircle, XCircle, Trash2, Phone, Mail, Building } from 'lucide-react';
+import { CheckCircle, XCircle, Trash2, Phone, Mail, Building, ChevronRight } from 'lucide-react';
 import LoadingSpinner from '../common/LoadingSpinner';
 
 const AgentManagement = () => {
+  const navigate = useNavigate();
   const [agents, setAgents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState({});
@@ -23,7 +25,8 @@ const AgentManagement = () => {
     fetchAgents();
   }, []);
 
-  const handleApprove = async (id, currentStatus) => {
+  const handleApprove = async (e, id, currentStatus) => {
+    e.stopPropagation(); // Prevent card click
     setActionLoading({ ...actionLoading, [id]: true });
     try {
       await approveAgent(id, !currentStatus);
@@ -35,7 +38,8 @@ const AgentManagement = () => {
     }
   };
 
-  const handleDelete = async (id, name) => {
+  const handleDelete = async (e, id, name) => {
+    e.stopPropagation(); // Prevent card click
     if (window.confirm(`Are you sure you want to delete agent "${name}"?`)) {
       setActionLoading({ ...actionLoading, [id]: true });
       try {
@@ -49,10 +53,14 @@ const AgentManagement = () => {
     }
   };
 
+  const handleCardClick = (agentId) => {
+    navigate(`/admin/agents/${agentId}`);
+  };
+
   if (loading) return <LoadingSpinner />;
 
-  const pendingAgents = agents.filter(a => !a.is_approved);
-  const approvedAgents = agents.filter(a => a.is_approved);
+  const pendingAgents = agents.filter(a => a.is_approved === 0);
+  const approvedAgents = agents.filter(a => a.is_approved === 1);
 
   return (
     <div className="space-y-8">
@@ -68,7 +76,11 @@ const AgentManagement = () => {
 
           <div className="space-y-4">
             {pendingAgents.map((agent) => (
-              <div key={agent.id} className="card p-6 border-2 border-amber-200 bg-amber-50/50">
+              <div 
+                key={agent.id} 
+                className="card p-6 border-2 border-amber-200 bg-amber-50/50 cursor-pointer hover:shadow-medium transition-all"
+                onClick={() => handleCardClick(agent.id)}
+              >
                 <div className="flex flex-col md:flex-row justify-between gap-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-3">
@@ -105,7 +117,7 @@ const AgentManagement = () => {
 
                   <div className="flex flex-col gap-2 md:items-end">
                     <button
-                      onClick={() => handleApprove(agent.id, agent.is_approved)}
+                      onClick={(e) => handleApprove(e, agent.id, agent.is_approved)}
                       disabled={actionLoading[agent.id]}
                       className="btn-primary"
                     >
@@ -113,7 +125,7 @@ const AgentManagement = () => {
                       Approve Agent
                     </button>
                     <button
-                      onClick={() => handleDelete(agent.id, agent.name)}
+                      onClick={(e) => handleDelete(e, agent.id, agent.name)}
                       disabled={actionLoading[agent.id]}
                       className="btn-ghost text-red-600 hover:bg-red-50"
                     >
@@ -144,28 +156,37 @@ const AgentManagement = () => {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {approvedAgents.map((agent) => (
-              <div key={agent.id} className="card p-6">
+              <div 
+                key={agent.id} 
+                className="card p-6 cursor-pointer hover:shadow-medium transition-all group"
+                onClick={() => handleCardClick(agent.id)}
+              >
                 <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 flex-1">
                     <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-teal-600 rounded-full flex items-center justify-center">
                       <span className="text-white font-bold text-lg">
                         {agent.name.charAt(0).toUpperCase()}
                       </span>
                     </div>
-                    <div>
-                      <h3 className="text-lg font-bold text-slate-900">{agent.name}</h3>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-bold text-slate-900 mb-1 group-hover:text-teal-600 transition-colors">
+                        {agent.name}
+                      </h3>
                       <span className="badge badge-success">Active</span>
                     </div>
                   </div>
 
-                  <button
-                    onClick={() => handleApprove(agent.id, agent.is_approved)}
-                    disabled={actionLoading[agent.id]}
-                    className="btn-ghost text-red-600 hover:bg-red-50 text-sm"
-                  >
-                    <XCircle className="w-4 h-4 mr-1" />
-                    Suspend
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={(e) => handleApprove(e, agent.id, agent.is_approved)}
+                      disabled={actionLoading[agent.id]}
+                      className="btn-ghost text-red-600 hover:bg-red-50 text-sm"
+                    >
+                      <XCircle className="w-4 h-4 mr-1" />
+                      Suspend
+                    </button>
+                    <ChevronRight className="w-6 h-6 text-slate-400 group-hover:text-teal-600 transition-colors" />
+                  </div>
                 </div>
 
                 <div className="space-y-2 text-sm">
@@ -185,6 +206,13 @@ const AgentManagement = () => {
                       {agent.company_name}
                     </div>
                   )}
+                </div>
+
+                <div className="mt-4 pt-4 border-t border-slate-200">
+                  <p className="text-xs text-slate-500 flex items-center justify-between">
+                    <span>Click to view profile & apartments</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </p>
                 </div>
               </div>
             ))}
